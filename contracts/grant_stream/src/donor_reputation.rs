@@ -659,6 +659,7 @@ mod tests {
     #[test]
     fn test_reputation_initialization() {
         let env = Env::default();
+        env.mock_all_auths();
         let admin = Address::generate(&env);
 
         with_contract(&env, || {
@@ -672,6 +673,7 @@ mod tests {
     #[test]
     fn test_project_funding() {
         let env = Env::default();
+        env.mock_all_auths();
         let admin = Address::generate(&env);
         let donor = Address::generate(&env);
 
@@ -697,6 +699,7 @@ mod tests {
     #[test]
     fn test_milestone_completion() {
         let env = Env::default();
+        env.mock_all_auths();
         let admin = Address::generate(&env);
         let donor = Address::generate(&env);
 
@@ -726,6 +729,7 @@ mod tests {
     #[test]
     fn test_influence_calculation() {
         let env = Env::default();
+        env.mock_all_auths();
         let admin = Address::generate(&env);
         let donor = Address::generate(&env);
 
@@ -754,6 +758,7 @@ mod tests {
     #[test]
     fn test_minimum_funding_threshold() {
         let env = Env::default();
+        env.mock_all_auths();
         let admin = Address::generate(&env);
         let donor = Address::generate(&env);
 
