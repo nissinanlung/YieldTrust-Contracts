@@ -51,7 +51,8 @@ fn test_matching_pool_full_cycle_10_projects_100_donors() {
         let donor = Address::generate(&env);
         client.verify_sep12_identity(&admin, &donor);
         assert_eq!(client.is_sep12_verified(&donor), true);
-        token_admin.mint(&donor, &max_donation_per_donor);
+        // Each donor can donate to 2-3 projects, so mint enough for 3 max donations
+        token_admin.mint(&donor, &(max_donation_per_donor * 3));
         donors.push_back(donor);
     }
 
