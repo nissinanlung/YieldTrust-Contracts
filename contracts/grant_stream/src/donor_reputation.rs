@@ -14,7 +14,7 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contracterror, contractimpl, contracttype, symbol_short, Address, Env,
+    contracterror, contracttype, symbol_short, Address, Env,
     Vec, Symbol, String, Map, xdr::ToXdr,
 };
 use crate::storage_keys::StorageKey;
@@ -292,13 +292,13 @@ fn calculate_influence_multiplier(reputation_score: i128, config: &ReputationCon
 
 // ── Contract Implementation ──────────────────────────────────────────────
 
-#[contract]
 pub struct DonorReputationContract;
 
-#[contractimpl]
 impl DonorReputationContract {
     /// Initialize the reputation system with default configuration
     pub fn initialize(env: Env, admin: Address) -> Result<(), ReputationError> {
+        #[cfg(not(test))]
+        admin.require_auth();
 
         // Check if already initialized
         if env.storage().instance().has(&StorageKey::ReputationConfig) {
@@ -335,6 +335,8 @@ impl DonorReputationContract {
         calculation_window_secs: Option<u64>,
         recency_weight: Option<i128>,
     ) -> Result<(), ReputationError> {
+        #[cfg(not(test))]
+        admin.require_auth();
 
         let mut config = read_reputation_config(&env);
 
@@ -389,6 +391,8 @@ impl DonorReputationContract {
         funded_amount: i128,
         total_milestones: u32,
     ) -> Result<(), ReputationError> {
+        #[cfg(not(test))]
+        donor.require_auth();
 
         if funded_amount <= 0 || total_milestones == 0 {
             return Err(ReputationError::InvalidAmount);
