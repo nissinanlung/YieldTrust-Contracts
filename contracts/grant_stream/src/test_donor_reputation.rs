@@ -83,8 +83,8 @@ fn create_donor_with_projects(
 
 #[test]
 fn test_linear_influence_scaling_tiers() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         // Test different donor tiers with linear scaling
@@ -126,8 +126,8 @@ fn test_linear_influence_scaling_tiers() {
 
 #[test]
 fn test_minimum_funding_threshold_prevents_farming() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         let donor = Address::generate(&env);
@@ -176,8 +176,8 @@ fn test_minimum_funding_threshold_prevents_farming() {
 
 #[test]
 fn test_reputation_farming_resistance() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         let farmer = Address::generate(&env);
@@ -220,8 +220,8 @@ fn test_reputation_farming_resistance() {
 
 #[test]
 fn test_partial_milestone_completion() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         let donor = Address::generate(&env);
@@ -258,8 +258,8 @@ fn test_partial_milestone_completion() {
 
 #[test]
 fn test_influence_math_fairness() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         // Test mathematical fairness across different scenarios
@@ -296,8 +296,8 @@ fn test_influence_math_fairness() {
 
 #[test]
 fn test_reputation_update_history() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         let donor = Address::generate(&env);
@@ -344,8 +344,8 @@ fn test_reputation_update_history() {
 
 #[test]
 fn test_configuration_updates() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         // Update configuration
@@ -407,8 +407,8 @@ fn test_configuration_updates() {
 
 #[test]
 fn test_edge_cases_and_error_handling() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         let donor = Address::generate(&env);
@@ -462,8 +462,8 @@ fn test_edge_cases_and_error_handling() {
 
 #[test]
 fn test_multiple_donors_independence() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         let donor1 = Address::generate(&env);
@@ -496,8 +496,8 @@ fn test_multiple_donors_independence() {
 
 #[test] 
 fn test_reputation_persistence_across_operations() {
+    let (env, admin) = create_test_env();
     with_contract(&env, || {
-        let (env, admin) = create_test_env();
         initialize_reputation_system(&env, &admin);
 
         let donor = Address::generate(&env);
