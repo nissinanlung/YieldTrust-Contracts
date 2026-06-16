@@ -1,5 +1,20 @@
 [workspace]
 resolver = "2"
+
+# Workspace members — each maps to a deployable Soroban WASM contract.
+#
+#   grant_stream        — Core per-second token streaming with milestone gating,
+#                         circuit breakers, dispute resolution, and yield integration.
+#   vesting_contracts   — Cliff + linear vesting schedules for team/investor allocations.
+#   arbitration         — On-chain arbitration escrow and multi-party dispute adjudication.
+#   compliance          — Regulatory compliance screening, KYC/AML hooks, and tax reporting.
+#   zk_kyc              — Zero-knowledge proof verification layer for privacy-preserving KYC.
+#
+# To add a new contract package:
+#   1. Create the crate under contracts/<name>/ with a Cargo.toml.
+#   2. Set `crate-type = ["cdylib", "rlib"]` and `publish = false`.
+#   3. Add the path to the `members` list below.
+#   4. Use `{ workspace = true }` for soroban-sdk — do NOT pin a separate version.
 members = [
     "contracts/grant_stream",
     "contracts/vesting_contracts",
@@ -8,12 +23,29 @@ members = [
     "contracts/zk_kyc"
 ]
 
+# ---------------------------------------------------------------------------
+# Shared dependency versions
+#
+# All workspace members must reference shared deps via `{ workspace = true }`.
+# To upgrade soroban-sdk across the entire workspace, change the version here
+# only — individual crate Cargo.toml files must NOT redeclare a version.
+#
+# Upgrade process:
+#   1. Update the version below.
+#   2. Run `cargo update` to regenerate Cargo.lock.
+#   3. Run `cargo test --workspace` to confirm all packages still compile and pass.
+#   4. Commit both Cargo.toml and Cargo.lock together in the same PR.
+# ---------------------------------------------------------------------------
 [workspace.dependencies]
 soroban-sdk = "22.0.0"
 
+# ---------------------------------------------------------------------------
+# Build profiles
+# ---------------------------------------------------------------------------
+
 [profile.release]
-opt-level = "z"
-overflow-checks = true
+opt-level = "z"         # Optimise for binary size (WASM targets)
+overflow-checks = true  # Arithmetic overflow causes a trap rather than silent wrap
 debug = 0
 strip = "symbols"
 debug-assertions = false
@@ -21,6 +53,8 @@ panic = "abort"
 codegen-units = 1
 lto = true
 
+# Same as release but with debug-assertions enabled — used for local integration
+# testing where you want bounds checks without a full debug build.
 [profile.release-with-logs]
 inherits = "release"
 debug-assertions = true
