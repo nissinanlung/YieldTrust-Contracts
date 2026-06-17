@@ -32,6 +32,9 @@ app.use((err, _req, res, _next) => {
 
 // ── Start (only when run directly) ───────────────────────────────────────────
 if (require.main === module) {
+  const { validateConfig } = require("./adapters/onChainAdapter");
+  validateConfig();
+
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Grant Stream API listening on port ${PORT}`);
