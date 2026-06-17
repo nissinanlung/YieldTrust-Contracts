@@ -22,6 +22,7 @@ const { onChainAdapter } = require("../src/adapters/onChainAdapter");
 
 const app = require("../src/index");
 const { readEscrow, normalise, validateEscrowId } = require("../src/services/escrowRead");
+const { fundEscrow, releaseEscrow, withdrawFromEscrow } = require("../src/services/escrowWrite");
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,18 @@ const heldRaw = { ...baseRaw, legal_hold: true };
 
 function mockGetEscrow(raw) {
   onChainAdapter.getEscrow.mockResolvedValue(raw);
+}
+
+function mockFundEscrow() {
+  onChainAdapter.fundEscrow.mockResolvedValue({});
+}
+
+function mockReleaseEscrow() {
+  onChainAdapter.releaseEscrow.mockResolvedValue({});
+}
+
+function mockWithdrawFromEscrow() {
+  onChainAdapter.withdrawFromEscrow.mockResolvedValue({});
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -179,7 +192,126 @@ describe("escrowRead service", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. GET /escrow/:escrowId — read endpoint
+// 1b. escrowWrite service — unit tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("escrowWrite service", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  describe("fundEscrow()", () => {
+    it("returns pending status with amount on success", async () => {
+      mockFundEscrow();
+      const result = await fundEscrow(ESCROW_ID, "1000000000000000000");
+      expect(result).toMatchObject({
+        status:    "pending",
+        message:   "Funding initiated",
+        escrow_id: ESCROW_ID,
+        amount:    "1000000000000000000",
+      });
+      expect(onChainAdapter.fundEscrow).toHaveBeenCalledWith(
+        ESCROW_ID,
+        "1000000000000000000",
+      );
+    });
+
+    it("throws 400 for invalid escrow ID", async () => {
+      await expect(fundEscrow("bad id!", "100")).rejects.toMatchObject({ statusCode: 400 });
+      expect(onChainAdapter.fundEscrow).not.toHaveBeenCalled();
+    });
+
+    it("throws 400 for non-string amount", async () => {
+      await expect(fundEscrow(ESCROW_ID, 123)).rejects.toMatchObject({ statusCode: 400 });
+      expect(onChainAdapter.fundEscrow).not.toHaveBeenCalled();
+    });
+
+    it("throws 400 for empty string amount", async () => {
+      await expect(fundEscrow(ESCROW_ID, "")).rejects.toMatchObject({ statusCode: 400 });
+      expect(onChainAdapter.fundEscrow).not.toHaveBeenCalled();
+    });
+
+    it("throws 502 when adapter throws", async () => {
+      onChainAdapter.fundEscrow.mockRejectedValue(new Error("RPC error"));
+      await expect(fundEscrow(ESCROW_ID, "100")).rejects.toMatchObject({ statusCode: 502 });
+    });
+
+    it("re-throws 4xx errors from adapter", async () => {
+      const err = new Error("bad request");
+      err.statusCode = 400;
+      onChainAdapter.fundEscrow.mockRejectedValue(err);
+      await expect(fundEscrow(ESCROW_ID, "100")).rejects.toMatchObject({ statusCode: 400 });
+    });
+  });
+
+  describe("releaseEscrow()", () => {
+    it("returns pending status on success", async () => {
+      mockReleaseEscrow();
+      const result = await releaseEscrow(ESCROW_ID);
+      expect(result).toMatchObject({
+        status:    "pending",
+        message:   "Release initiated",
+        escrow_id: ESCROW_ID,
+      });
+      expect(onChainAdapter.releaseEscrow).toHaveBeenCalledWith(ESCROW_ID);
+    });
+
+    it("throws 400 for invalid escrow ID", async () => {
+      await expect(releaseEscrow("bad id!")).rejects.toMatchObject({ statusCode: 400 });
+      expect(onChainAdapter.releaseEscrow).not.toHaveBeenCalled();
+    });
+
+    it("throws 502 when adapter throws", async () => {
+      onChainAdapter.releaseEscrow.mockRejectedValue(new Error("RPC error"));
+      await expect(releaseEscrow(ESCROW_ID)).rejects.toMatchObject({ statusCode: 502 });
+    });
+  });
+
+  describe("withdrawFromEscrow()", () => {
+    it("returns pending status on success without amount", async () => {
+      mockWithdrawFromEscrow();
+      const result = await withdrawFromEscrow(ESCROW_ID);
+      expect(result).toMatchObject({
+        status:    "pending",
+        message:   "Withdrawal initiated",
+        escrow_id: ESCROW_ID,
+      });
+      expect(result).not.toHaveProperty("amount");
+      expect(onChainAdapter.withdrawFromEscrow).toHaveBeenCalledWith(ESCROW_ID, undefined);
+    });
+
+    it("returns pending status on success with amount", async () => {
+      mockWithdrawFromEscrow();
+      const result = await withdrawFromEscrow(ESCROW_ID, "5000000000000000000");
+      expect(result).toMatchObject({
+        status:    "pending",
+        message:   "Withdrawal initiated",
+        escrow_id: ESCROW_ID,
+        amount:    "5000000000000000000",
+      });
+      expect(onChainAdapter.withdrawFromEscrow).toHaveBeenCalledWith(
+        ESCROW_ID,
+        "5000000000000000000",
+      );
+    });
+
+    it("throws 400 for invalid escrow ID", async () => {
+      await expect(withdrawFromEscrow("bad id!")).rejects.toMatchObject({ statusCode: 400 });
+      expect(onChainAdapter.withdrawFromEscrow).not.toHaveBeenCalled();
+    });
+
+    it("throws 400 for non-string amount", async () => {
+      await expect(withdrawFromEscrow(ESCROW_ID, 123)).rejects.toMatchObject({ statusCode: 400 });
+      expect(onChainAdapter.withdrawFromEscrow).not.toHaveBeenCalled();
+    });
+
+    it("throws 502 when adapter throws", async () => {
+      onChainAdapter.withdrawFromEscrow.mockRejectedValue(new Error("RPC error"));
+      await expect(withdrawFromEscrow(ESCROW_ID)).rejects.toMatchObject({ statusCode: 502 });
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. GET /escrow/:escrowId — read endpoint
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("GET /escrow/:escrowId", () => {
@@ -238,11 +370,21 @@ describe("POST /escrow/:escrowId/fund", () => {
 
   it("proceeds (200) when legal_hold is false", async () => {
     mockGetEscrow(baseRaw);
+    mockFundEscrow();
     const res = await request(app)
       .post(`/escrow/${ESCROW_ID}/fund`)
       .send({ amount: "1000000000000000000" });
     expect(res.status).toBe(200);
-    expect(res.body.message).toBe("Funding initiated");
+    expect(res.body).toMatchObject({
+      status:    "pending",
+      message:   "Funding initiated",
+      escrow_id: ESCROW_ID,
+      amount:    "1000000000000000000",
+    });
+    expect(onChainAdapter.fundEscrow).toHaveBeenCalledWith(
+      ESCROW_ID,
+      "1000000000000000000",
+    );
   });
 
   it("returns 502 when legal_hold is true", async () => {
@@ -260,8 +402,8 @@ describe("POST /escrow/:escrowId/fund", () => {
       .post(`/escrow/${ESCROW_ID}/fund`)
       .send({ amount: "1000000000000000000" });
     expect(res.status).toBe(502);
-    // Adapter was called once (for the gate check), but no funding tx
     expect(onChainAdapter.getEscrow).toHaveBeenCalledTimes(1);
+    expect(onChainAdapter.fundEscrow).not.toHaveBeenCalled();
   });
 
   it("returns 400 when amount is missing", async () => {
@@ -271,6 +413,7 @@ describe("POST /escrow/:escrowId/fund", () => {
       .send({});
     expect(res.status).toBe(400);
     expect(res.body.error).toBe("Missing amount");
+    expect(onChainAdapter.fundEscrow).not.toHaveBeenCalled();
   });
 
   it("returns 400 for invalid escrow ID", async () => {
@@ -278,15 +421,17 @@ describe("POST /escrow/:escrowId/fund", () => {
       .post("/escrow/bad id!/fund")
       .send({ amount: "100" });
     expect(res.status).toBe(400);
+    expect(onChainAdapter.fundEscrow).not.toHaveBeenCalled();
   });
 
-  it("returns 502 when adapter is unavailable (safe-fail)", async () => {
+  it("returns 502 when gateway adapter is unavailable (safe-fail)", async () => {
     onChainAdapter.getEscrow.mockRejectedValue(new Error("RPC down"));
     const res = await request(app)
       .post(`/escrow/${ESCROW_ID}/fund`)
       .send({ amount: "100" });
     expect(res.status).toBe(502);
     expect(res.body.error).toBe("Escrow is under legal hold");
+    expect(onChainAdapter.fundEscrow).not.toHaveBeenCalled();
   });
 
   it("returns 404 when escrow not found", async () => {
@@ -295,6 +440,17 @@ describe("POST /escrow/:escrowId/fund", () => {
       .post(`/escrow/${ESCROW_ID}/fund`)
       .send({ amount: "100" });
     expect(res.status).toBe(404);
+    expect(onChainAdapter.fundEscrow).not.toHaveBeenCalled();
+  });
+
+  it("returns 502 when write adapter throws", async () => {
+    mockGetEscrow(baseRaw);
+    onChainAdapter.fundEscrow.mockRejectedValue(new Error("write failed"));
+    const res = await request(app)
+      .post(`/escrow/${ESCROW_ID}/fund`)
+      .send({ amount: "100" });
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe("Failed to initiate funding");
   });
 });
 
@@ -307,9 +463,15 @@ describe("POST /escrow/:escrowId/release", () => {
 
   it("proceeds (200) when legal_hold is false", async () => {
     mockGetEscrow(baseRaw);
+    mockReleaseEscrow();
     const res = await request(app).post(`/escrow/${ESCROW_ID}/release`).send({});
     expect(res.status).toBe(200);
-    expect(res.body.message).toBe("Release initiated");
+    expect(res.body).toMatchObject({
+      status:    "pending",
+      message:   "Release initiated",
+      escrow_id: ESCROW_ID,
+    });
+    expect(onChainAdapter.releaseEscrow).toHaveBeenCalledWith(ESCROW_ID);
   });
 
   it("returns 502 when legal_hold is true", async () => {
@@ -317,6 +479,15 @@ describe("POST /escrow/:escrowId/release", () => {
     const res = await request(app).post(`/escrow/${ESCROW_ID}/release`).send({});
     expect(res.status).toBe(502);
     expect(res.body.error).toBe("Escrow is under legal hold");
+    expect(onChainAdapter.releaseEscrow).not.toHaveBeenCalled();
+  });
+
+  it("returns 502 when write adapter throws", async () => {
+    mockGetEscrow(baseRaw);
+    onChainAdapter.releaseEscrow.mockRejectedValue(new Error("write failed"));
+    const res = await request(app).post(`/escrow/${ESCROW_ID}/release`).send({});
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe("Failed to initiate release");
   });
 });
 
@@ -327,11 +498,37 @@ describe("POST /escrow/:escrowId/release", () => {
 describe("POST /escrow/:escrowId/withdraw", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("proceeds (200) when legal_hold is false", async () => {
+  it("proceeds (200) when legal_hold is false (no amount)", async () => {
     mockGetEscrow(baseRaw);
+    mockWithdrawFromEscrow();
     const res = await request(app).post(`/escrow/${ESCROW_ID}/withdraw`).send({});
     expect(res.status).toBe(200);
-    expect(res.body.message).toBe("Withdrawal initiated");
+    expect(res.body).toMatchObject({
+      status:    "pending",
+      message:   "Withdrawal initiated",
+      escrow_id: ESCROW_ID,
+    });
+    expect(res.body).not.toHaveProperty("amount");
+    expect(onChainAdapter.withdrawFromEscrow).toHaveBeenCalledWith(ESCROW_ID, undefined);
+  });
+
+  it("proceeds (200) when legal_hold is false (with amount)", async () => {
+    mockGetEscrow(baseRaw);
+    mockWithdrawFromEscrow();
+    const res = await request(app)
+      .post(`/escrow/${ESCROW_ID}/withdraw`)
+      .send({ amount: "5000000000000000000" });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      status:    "pending",
+      message:   "Withdrawal initiated",
+      escrow_id: ESCROW_ID,
+      amount:    "5000000000000000000",
+    });
+    expect(onChainAdapter.withdrawFromEscrow).toHaveBeenCalledWith(
+      ESCROW_ID,
+      "5000000000000000000",
+    );
   });
 
   it("returns 502 when legal_hold is true", async () => {
@@ -339,6 +536,15 @@ describe("POST /escrow/:escrowId/withdraw", () => {
     const res = await request(app).post(`/escrow/${ESCROW_ID}/withdraw`).send({});
     expect(res.status).toBe(502);
     expect(res.body.error).toBe("Escrow is under legal hold");
+    expect(onChainAdapter.withdrawFromEscrow).not.toHaveBeenCalled();
+  });
+
+  it("returns 502 when write adapter throws", async () => {
+    mockGetEscrow(baseRaw);
+    onChainAdapter.withdrawFromEscrow.mockRejectedValue(new Error("write failed"));
+    const res = await request(app).post(`/escrow/${ESCROW_ID}/withdraw`).send({});
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe("Failed to initiate withdrawal");
   });
 });
 
