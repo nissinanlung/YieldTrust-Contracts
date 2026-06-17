@@ -11,6 +11,6 @@ pub mod dead_mans_switch;
 pub mod governance_activity_monitor;
 
 // Re-export main types for easier integration
-pub use dead_mans_switch::DeadMansSwitchContract;
+pub use dead_mans_switch::{DeadMansSwitchContract, SwitchError};
 pub use governance_activity_monitor::GovernanceActivityMonitor;
 pub use governance_activity_monitor::{ParameterType, ChangeStatus, MonitorError};

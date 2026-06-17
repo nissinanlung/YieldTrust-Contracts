@@ -1,6 +1,6 @@
 #![no_std]
 use soroban_sdk::{
-    contract, contractimpl, contracttype, Address, Env,
+    contract, contractimpl, contracterror, contracttype, Address, Env,
 };
 
 const INACTIVITY_PERIOD: u64 = 180 * 24 * 60 * 60; // 180 days in seconds
@@ -15,6 +15,25 @@ pub enum SwitchKey {
     RecoveryExecuted,   // bool
 }
 
+// ── Errors ───────────────────────────────────────────────────────────────────
+
+/// All error conditions the Dead Man's Switch contract can return.
+#[contracterror]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[repr(u32)]
+pub enum SwitchError {
+    /// Contract has not been initialized yet, or storage is corrupt.
+    NotInitialized = 1,
+    /// Caller is not the primary admin.
+    UnauthorizedAdmin = 2,
+    /// Caller is not the recovery vault.
+    UnauthorizedVault = 3,
+    /// Recovery has already been executed once.
+    RecoveryAlreadyExecuted = 4,
+    /// The inactivity period has not elapsed yet.
+    InactivityPeriodNotElapsed = 5,
+}
+
 // ── Contract ──────────────────────────────────────────────────────────────────
 
 #[contract]
@@ -24,25 +43,30 @@ pub struct DeadMansSwitchContract;
 impl DeadMansSwitchContract {
 
     /// Initialize with a primary admin and a recovery vault address.
-    pub fn initialize(env: Env, primary_admin: Address, recovery_vault: Address) {
+    /// Returns an error if already initialized.
+    pub fn initialize(env: Env, primary_admin: Address, recovery_vault: Address) -> Result<(), SwitchError> {
+        if env.storage().instance().has(&SwitchKey::PrimaryAdmin) {
+            return Err(SwitchError::NotInitialized);
+        }
         primary_admin.require_auth();
         env.storage().instance().set(&SwitchKey::PrimaryAdmin, &primary_admin);
         env.storage().instance().set(&SwitchKey::RecoveryVault, &recovery_vault);
         env.storage().instance().set(&SwitchKey::LastActivityAt, &env.ledger().timestamp());
         env.storage().instance().set(&SwitchKey::RecoveryExecuted, &false);
+        Ok(())
     }
 
     /// Heartbeat — primary admin calls this to prove liveness and reset the countdown.
-    pub fn heartbeat(env: Env, admin: Address) {
+    pub fn heartbeat(env: Env, admin: Address) -> Result<(), SwitchError> {
         admin.require_auth();
-        Self::assert_primary_admin(&env, &admin);
+        Self::assert_primary_admin(&env, &admin)?;
         let now = env.ledger().timestamp();
         env.storage().instance().set(&SwitchKey::LastActivityAt, &now);
-        // Emit event for auditability
         env.events().publish(
             (soroban_sdk::symbol_short!("heartbeat"),),
             (admin, now),
         );
+        Ok(())
     }
 
     /// Any admin action should call this internally to reset the countdown.
@@ -54,21 +78,19 @@ impl DeadMansSwitchContract {
     }
 
     /// Recovery vault claims admin rights after 180 days of inactivity.
-    pub fn claim_admin(env: Env, recovery_vault: Address) {
+    pub fn claim_admin(env: Env, recovery_vault: Address) -> Result<(), SwitchError> {
         recovery_vault.require_auth();
-        Self::assert_recovery_vault(&env, &recovery_vault);
+        Self::assert_recovery_vault(&env, &recovery_vault)?;
 
-        // Ensure recovery hasn't already been executed
         let already_executed: bool = env
             .storage()
             .instance()
             .get(&SwitchKey::RecoveryExecuted)
             .unwrap_or(false);
         if already_executed {
-            panic!("Recovery has already been executed");
+            return Err(SwitchError::RecoveryAlreadyExecuted);
         }
 
-        // Check inactivity window
         let last_activity: u64 = env
             .storage()
             .instance()
@@ -78,14 +100,9 @@ impl DeadMansSwitchContract {
         let elapsed = now.saturating_sub(last_activity);
 
         if elapsed < INACTIVITY_PERIOD {
-            let remaining = INACTIVITY_PERIOD - elapsed;
-            panic!(
-                "Inactivity period not yet elapsed — {} seconds remaining",
-                remaining
-            );
+            return Err(SwitchError::InactivityPeriodNotElapsed);
         }
 
-        // Transfer admin rights to recovery vault
         env.storage().instance().set(&SwitchKey::PrimaryAdmin, &recovery_vault);
         env.storage().instance().set(&SwitchKey::RecoveryExecuted, &true);
 
@@ -93,14 +110,16 @@ impl DeadMansSwitchContract {
             (soroban_sdk::symbol_short!("recovered"),),
             (recovery_vault, now),
         );
+        Ok(())
     }
 
     /// Update the recovery vault address (primary admin only).
-    pub fn update_recovery_vault(env: Env, admin: Address, new_vault: Address) {
+    pub fn update_recovery_vault(env: Env, admin: Address, new_vault: Address) -> Result<(), SwitchError> {
         admin.require_auth();
-        Self::assert_primary_admin(&env, &admin);
+        Self::assert_primary_admin(&env, &admin)?;
         Self::record_activity(&env);
         env.storage().instance().set(&SwitchKey::RecoveryVault, &new_vault);
+        Ok(())
     }
 
     /// View how many seconds remain before the recovery vault can claim admin.
@@ -115,42 +134,44 @@ impl DeadMansSwitchContract {
     }
 
     /// View current primary admin.
-    pub fn get_admin(env: Env) -> Address {
+    pub fn get_admin(env: Env) -> Result<Address, SwitchError> {
         env.storage()
             .instance()
             .get(&SwitchKey::PrimaryAdmin)
-            .expect("Admin not set")
+            .ok_or(SwitchError::NotInitialized)
     }
 
     /// View recovery vault address.
-    pub fn get_recovery_vault(env: Env) -> Address {
+    pub fn get_recovery_vault(env: Env) -> Result<Address, SwitchError> {
         env.storage()
             .instance()
             .get(&SwitchKey::RecoveryVault)
-            .expect("Recovery vault not set")
+            .ok_or(SwitchError::NotInitialized)
     }
 
     // ── Internal ─────────────────────────────────────────────────────────────
 
-    fn assert_primary_admin(env: &Env, caller: &Address) {
+    fn assert_primary_admin(env: &Env, caller: &Address) -> Result<(), SwitchError> {
         let admin: Address = env
             .storage()
             .instance()
             .get(&SwitchKey::PrimaryAdmin)
-            .expect("Admin not set");
+            .ok_or(SwitchError::NotInitialized)?;
         if *caller != admin {
-            panic!("Unauthorized: caller is not the primary admin");
+            return Err(SwitchError::UnauthorizedAdmin);
         }
+        Ok(())
     }
 
-    fn assert_recovery_vault(env: &Env, caller: &Address) {
+    fn assert_recovery_vault(env: &Env, caller: &Address) -> Result<(), SwitchError> {
         let vault: Address = env
             .storage()
             .instance()
             .get(&SwitchKey::RecoveryVault)
-            .expect("Recovery vault not set");
+            .ok_or(SwitchError::NotInitialized)?;
         if *caller != vault {
-            panic!("Unauthorized: caller is not the recovery vault");
+            return Err(SwitchError::UnauthorizedVault);
         }
+        Ok(())
     }
 }
