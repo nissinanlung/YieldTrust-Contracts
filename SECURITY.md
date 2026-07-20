@@ -1,3 +1,90 @@
+# Security Policy
+
+## Vulnerability Disclosure Policy
+
+### Reporting Security Vulnerabilities
+
+If you discover a security vulnerability in this project, please report it responsibly. We take security seriously and appreciate your efforts to help us keep our users safe.
+
+### How to Report
+
+**Email:** security@agritrust-protocol.org
+
+**PGP Key:** 
+```
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+[PGP public key would be inserted here]
+
+-----END PGP PUBLIC KEY BLOCK-----
+```
+
+Please include the following information in your report:
+- Description of the vulnerability
+- Steps to reproduce the issue
+- Potential impact of the vulnerability
+- Any suggested mitigation or fix
+
+### Response Timeline
+
+We aim to respond to security reports within 48 hours and provide a detailed assessment within 7 days. You can expect:
+
+- **Initial Response:** Within 48 hours
+- **Detailed Assessment:** Within 7 days
+- **Remediation Timeline:** Based on severity (see below)
+- **Public Disclosure:** After fix is deployed and verified
+
+### Safe Harbor
+
+We commit to:
+- Not pursue legal action against security researchers who follow this disclosure policy
+- Work with researchers to understand and resolve vulnerabilities
+- Credit researchers in our security advisories (if desired)
+- Maintain confidentiality during the disclosure process
+
+### Scope
+
+The following are in-scope for security reviews:
+- Smart contracts in `contracts/` directory
+- Core protocol logic and state management
+- Access control mechanisms
+- Reentrancy protection
+- Circuit breaker implementations
+- Oracle integration
+- Token transfer and accounting logic
+
+The following are out-of-scope:
+- Third-party dependencies and external services
+- Issues already reported or known
+- Social engineering attacks
+- Physical attacks on infrastructure
+- Issues requiring privileged access to user accounts
+
+### Severity Classification
+
+- **Critical:** Fund loss, protocol compromise, or unauthorized fund movement
+- **High:** Service disruption, security control bypass, or significant fund loss potential
+- **Medium:** Operational issues, partial functionality loss, or limited fund exposure
+- **Low:** Minor bugs, cosmetic issues, or minimal security impact
+
+### Bounty Program
+
+We offer bug bounties for qualifying vulnerabilities:
+- **Critical:** $10,000 - $50,000
+- **High:** $5,000 - $15,000
+- **Medium:** $1,000 - $5,000
+- **Low:** $100 - $1,000
+
+Bounty amounts are determined based on severity, impact, and quality of the report.
+
+### Additional Security Documentation
+
+For comprehensive technical security details, please refer to:
+- [SECURITY_MODEL.md](SECURITY_MODEL.md) - Detailed security model and threat analysis
+- [AUDIT_READY.rs](AUDIT_READY.rs) - Security function mapping and audit references
+
+---
+
 # Security Documentation
 
 ## Overview
