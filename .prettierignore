@@ -1,0 +1,42 @@
+# Rust build artifacts
+/target/
+Cargo.lock
+**/*.rs.bk
+
+# Node.js dependencies
+node_modules/
+
+# Generated / compiled artifacts
+artifacts/
+cache/
+
+# Environment files
+.env
+
+# Lock files (auto-generated)
+package-lock.json
+yarn.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Backup files
+*.bak
+*.backup
+
+# Rust source files (not handled by Prettier by default)
+**/*.rs
+
+# Test snapshots (auto-generated test fixtures)
+grant_stream/test_snapshots/
